@@ -1,0 +1,54 @@
+---
+title: "Gun Data"
+output: html_notebook
+---
+
+```{r setup}
+library(tidyverse)
+library(readxl)
+library(janitor)
+
+# ownership data from RAND: https://www.rand.org/research/gun-policy/gun-ownership.html
+gun_ownership <- read_excel("ownership_data.xlsx", sheet = 2)
+
+# cause of death data from CDC: https://wonder.cdc.gov/
+death_data <- read_excel("death_data.xlsx")
+
+death_data <- death_data |>
+  clean_names() |>
+  select(-notes, -year_code) |>
+  filter(!is.na(year)) |>
+  rename(
+    FIPS = state_code,
+    gun_deaths = deaths,
+    cdc_population = population,
+    gun_death_rate = crude_rate
+  )
+  
+gun_ownership <- gun_ownership |>
+  clean_names() |>
+  mutate(
+    firearm_laws = if_else(
+      (universl == 1) & (permit == 1),
+      1, 
+      0
+    )
+  ) |>
+  rename(
+    FIPS = fip,
+    household_firearm_ownership = hfr,
+    female_firearm_suicide = fem_fs_s,
+    male_firearm_suicide = male_fs_s,
+    universal_background_check = universl,
+    permit_required = permit
+  ) |>
+  select(
+    FIPS:permit_required,firearm_laws, -hfr_se
+  )
+
+df <- death_data |>
+  inner_join(gun_ownership, by = c("state", "FIPS", "year"))
+
+write.csv(df, "cleaned_gun_data.csv")
+```
+
